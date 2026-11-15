@@ -1,0 +1,111 @@
+# Earth Scope — durable background analysis stack (Phase 6).
+#
+#   Copy-Item .env.example .env          # once; set POSTGRES_PASSWORD
+#   docker compose up -d --build         # postgres, redis, migrate, backend, worker, scheduler
+#   docker compose up -d --scale worker=2
+#   docker compose logs -f worker
+#   docker compose down                  # keeps the volumes (jobs, results, queue)
+#
+# The Vite frontend keeps running on Windows (npm run dev) and proxies /api to http://127.0.0.1:8000.
+
+x-backend: &backend
+  build: ./backend
+  image: earthscope-backend:phase6
+  environment:
+    EARTHSCOPE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-earthscope}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-earthscope}
+    EARTHSCOPE_REDIS_URL: redis://redis:6379/0
+    EARTHSCOPE_ARTIFACT_DIR: /data/artifacts
+    EARTHSCOPE_BOUNDARY_CACHE_DIR: /data/boundaries
+    EARTHSCOPE_OPS_TOKEN: ${EARTHSCOPE_OPS_TOKEN:-}
+    EARTHSCOPE_JOB_ALLOW_VERY_LARGE: ${EARTHSCOPE_JOB_ALLOW_VERY_LARGE:-false}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    GEMINI_MODEL: ${GEMINI_MODEL:-}
+    GEMINI_CHAT_ENABLED: ${GEMINI_CHAT_ENABLED:-true}
+    GEMINI_MAX_OUTPUT_TOKENS: ${GEMINI_MAX_OUTPUT_TOKENS:-1200}
+  volumes:
+    - artifacts:/data/artifacts
+    - boundaries:/data/boundaries
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-earthscope}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-earthscope}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    # Not published on the host: only the containers talk to it.
+
+  redis:
+    image: redis:7-alpine
+    # Append-only file: queued messages survive a Redis restart. (Even without it the
+    # reconciler re-enqueues jobs whose message was lost — PostgreSQL is authoritative.)
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    <<: *backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.jobs.worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    # RQ finishes the current job on SIGTERM ("warm shutdown"). A long job that does not finish within
+    # the grace period is killed; its lease expires and the scheduler resumes it from its checkpoints.
+    stop_grace_period: 60s
+    mem_limit: 2g
+
+  scheduler:
+    <<: *backend
+    command: ["python", "-m", "app.jobs.reconciler"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
+  artifacts:
+  boundaries:

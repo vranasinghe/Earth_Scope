@@ -1,0 +1,36 @@
+# --- Python / backend ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+backend/.env
+*.egg-info/
+.coverage
+htmlcov/
+# Downloaded boundary geometries (re-downloaded on demand from pinned URLs)
+backend/app/data/boundary_cache/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+*.tsbuildinfo
+
+# --- Logs ---
+*.log
+npm-debug.log*
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# --- Background jobs (Phase 6) ---
+# Local job database, checkpoints and results (Docker uses named volumes instead)
+backend/var/
+# Docker Compose secrets (copy .env.example to .env)
+.env

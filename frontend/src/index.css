@@ -1,0 +1,333 @@
+@import 'tailwindcss';
+
+/*
+ * Earth Scope design tokens.
+ *
+ * Semantic colour roles, resolved per theme on <html data-theme="light|dark">
+ * (set before first paint by the inline script in index.html, then by
+ * ThemeProvider). Components use only these roles, never raw hex values,
+ * so every surface follows the theme.
+ *
+ *   page / sunken / surface / raised   ground → recessed → panel → hover/selected fill
+ *   line / line-strong                 hairlines → control borders
+ *   fg / fg-muted / fg-subtle          text: primary → secondary → metadata
+ *   accent / accent-strong / on-accent action colour, its hover, text on it
+ *   teal / ok / warn / danger          semantic states
+ *   series-* / chart-*                 data-visualisation roles
+ */
+@theme {
+  --font-sans: 'Atkinson Hyperlegible Next', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-display: 'Atkinson Hyperlegible Next', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'Atkinson Hyperlegible Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* Dark (default before the theme attribute resolves) */
+  --color-page: #0b1422;
+  --color-sunken: #08101c;
+  --color-surface: #101b2c;
+  --color-raised: #182538;
+  --color-line: #213249;
+  --color-line-strong: #2f445f;
+
+  --color-fg: #e8eef6;
+  --color-fg-muted: #a5b4c7;
+  --color-fg-subtle: #8093aa;
+
+  --color-accent: #22d3ee;
+  --color-accent-strong: #67e8f9;
+  --color-on-accent: #031019;
+  --color-teal: #2dd4bf;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+
+  --color-series-observed: #22b8d8;
+  --color-series-trend: #e08a1e;
+  --color-series-region: #a78bfa;
+  --color-trend-up: #f4a582;
+  --color-trend-down: #92c5de;
+  --color-chart-grid: #1e2e44;
+  --color-chart-axis: #95a6bb;
+
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.3);
+}
+
+/* Light theme: cool paper-white ground; accents darkened to keep AA contrast on white. */
+:root[data-theme='light'] {
+  --color-page: #f5f7fa;
+  --color-sunken: #eef2f6;
+  --color-surface: #ffffff;
+  --color-raised: #edf1f5;
+  --color-line: #dfe6ee;
+  --color-line-strong: #c3cfdc;
+
+  --color-fg: #0c1a2b;
+  --color-fg-muted: #44566b;
+  --color-fg-subtle: #5d6f84;
+
+  --color-accent: #0e7490;
+  --color-accent-strong: #155e75;
+  --color-on-accent: #ffffff;
+  --color-teal: #0f766e;
+  --color-ok: #047857;
+  --color-warn: #a35a00;
+  --color-danger: #b42318;
+
+  --color-series-observed: #0e7490;
+  --color-series-trend: #b45309;
+  --color-series-region: #6d28d9;
+  --color-trend-up: #b2182b;
+  --color-trend-down: #2166ac;
+  --color-chart-grid: #e3e9f0;
+  --color-chart-axis: #52657a;
+
+  --shadow-card: 0 1px 2px rgb(15 28 45 / 0.05), 0 1px 3px rgb(15 28 45 / 0.04);
+  --shadow-pop: 0 14px 34px -10px rgb(15 28 45 / 0.25), 0 2px 6px rgb(15 28 45 / 0.08);
+}
+
+/* No-JS fallback: follow the system setting. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-page: #f5f7fa;
+    --color-surface: #ffffff;
+    --color-raised: #edf1f5;
+    --color-line: #dfe6ee;
+    --color-line-strong: #c3cfdc;
+    --color-fg: #0c1a2b;
+    --color-fg-muted: #44566b;
+    --color-fg-subtle: #5d6f84;
+    --color-accent: #0e7490;
+    --color-on-accent: #ffffff;
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  html[data-theme='light'] {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-page font-sans text-fg antialiased;
+    min-height: 100vh;
+    font-size: 1rem;
+    line-height: 1.55;
+    caret-color: var(--color-accent);
+    font-feature-settings: 'kern';
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 28%, transparent);
+    color: var(--color-fg);
+  }
+  * {
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Components. Declared with @utility (Tailwind v4) so markup can still override them. */
+@utility card {
+  @apply rounded-xl border border-line bg-surface;
+  box-shadow: var(--shadow-card);
+}
+@utility card-pad {
+  @apply p-5 sm:p-6;
+}
+/* Quiet grouping inside a page: no border, a recessed fill. */
+@utility panel {
+  @apply rounded-xl bg-sunken;
+}
+@utility btn {
+  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-[0.9375rem] font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-accent text-on-accent hover:bg-accent-strong;
+}
+@utility btn-secondary {
+  @apply btn border border-line-strong bg-surface text-fg hover:border-fg-subtle hover:bg-raised;
+}
+@utility btn-ghost {
+  @apply btn text-fg-muted hover:bg-raised hover:text-fg;
+}
+@utility input {
+  @apply w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[0.9375rem] text-fg placeholder:text-fg-subtle transition-shadow focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent/20;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-semibold text-fg;
+}
+@utility hint {
+  @apply text-sm text-fg-subtle;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-md border border-line bg-raised px-2 py-0.5 text-xs font-medium text-fg-muted;
+}
+@utility stat-num {
+  @apply font-mono tabular-nums;
+}
+@utility measure {
+  max-width: 68ch;
+}
+/* Segmented control (radio group of buttons). */
+@utility seg {
+  @apply inline-flex rounded-lg border border-line bg-sunken p-0.5;
+}
+@utility seg-item {
+  @apply inline-flex min-h-8 items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium text-fg-muted transition-colors duration-150 hover:text-fg aria-checked:bg-surface aria-checked:text-fg aria-checked:shadow-sm aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow-sm aria-selected:bg-surface aria-selected:text-fg aria-selected:shadow-sm;
+}
+/* Disclosure built on <details>/<summary>. */
+@utility disclosure {
+  & > summary {
+    @apply flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-fg-muted hover:text-fg;
+  }
+  & > summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Leaflet: themed chrome. Basemap tiles switch with the theme (see BaseTiles). */
+/* Background matches the muted ocean, so sub-pixel seams between tiles stay invisible. */
+.leaflet-container {
+  background: #c9d4dc;
+  font-family: var(--font-sans);
+  border-radius: 0.75rem;
+}
+/* Muted basemap: only the tile pane is filtered; overlays keep their data colours. */
+.leaflet-tile-pane {
+  filter: saturate(0.4) contrast(0.95) brightness(1.03);
+}
+html[data-theme='dark'] .leaflet-container {
+  background: #232a33;
+}
+html[data-theme='dark'] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9);
+}
+.leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-surface) 85%, transparent) !important;
+  color: var(--color-fg-muted) !important;
+  font-size: 11px;
+}
+.leaflet-control-attribution a {
+  color: var(--color-accent) !important;
+}
+.es-pin-wrap {
+  background: transparent;
+  border: 0;
+}
+.es-pin {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  border: 3px solid var(--color-surface);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 45%, transparent), 0 4px 10px rgb(0 0 0 / 0.35);
+  cursor: grab;
+}
+.es-handle {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  border: 3px solid var(--color-accent);
+  cursor: nwse-resize;
+}
+.es-handle.es-handle-mid {
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+  border-radius: 999px;
+  opacity: 0.75;
+  cursor: copy;
+}
+.leaflet-tooltip {
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  font-size: 12px;
+}
+.leaflet-tooltip-top::before {
+  border-top-color: var(--color-line-strong);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-surface);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-pop);
+}
+.leaflet-bar {
+  border: 1px solid var(--color-line-strong) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+.leaflet-bar a {
+  background: var(--color-surface) !important;
+  color: var(--color-fg) !important;
+  border-color: var(--color-line) !important;
+}
+.leaflet-bar a:hover {
+  background: var(--color-raised) !important;
+}
+
+/* --- Earth Scope AI assistant ------------------------------------------- */
+@utility es-ai-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  color: var(--color-fg-muted);
+  &:hover {
+    background: var(--color-sunken);
+    color: var(--color-fg);
+  }
+}
+
+@keyframes es-ai-fade {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes es-ai-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
