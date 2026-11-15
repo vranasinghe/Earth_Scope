@@ -133,7 +133,7 @@ def chat(req: AiChatRequest, *, client: NasaPowerClient, settings: Settings, req
         return {**base, "reply": reply, "model": None, "usage": None, "generated": False}
 
     context = fit_context(ctx.data, settings.ai_max_context_chars)
-    system = build_system_instruction(context)
+    system = build_system_instruction(context, settings)
     contents = bounded_history(req, settings)
     question = SUMMARY_PROMPT if req.action == "summarize" else message
     if contents and contents[-1]["role"] == "user":

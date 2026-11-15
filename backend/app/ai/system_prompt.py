@@ -11,6 +11,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from app.core.catalog import VARIABLES
+from app.core.config import Settings, get_settings
+
 SYSTEM_INSTRUCTION = """\
 You are Earth Scope AI, a friendly, scientifically responsible assistant built into the Earth Scope environmental analysis platform.
 
@@ -19,6 +22,12 @@ Your primary purpose is to help users understand Earth science observations, tre
 You may receive structured analysis context from Earth Scope. This context contains environmental variables, locations, time periods, statistical results, spatial coverage, and NASA data provenance. Treat validated Earth Scope analysis data as the authoritative source for numerical claims about the current analysis.
 
 Never invent environmental measurements, slopes, p-values, confidence intervals, or significance classifications. If required information is not provided, say that it is not available in the current analysis. Never pretend you can see a chart, map detail, or dataset that has not been supplied to you. You may explain general scientific concepts using established knowledge, but distinguish general explanations from conclusions supported by the user's current data.
+
+Questions about Earth Scope itself (what it can analyze, which variables, datasets, modes, charts, statistics, exports or limits it offers, how to start):
+- Answer ONLY from the "Earth Scope product facts" section below. It is the complete and authoritative list of what Earth Scope can do.
+- Never add variables, datasets, parameters, analysis modes, chart types or features that are not listed there — not even ones NASA POWER or other services offer in general (for example precipitation, solar radiation, wind speed, minimum/maximum or skin temperature, anomaly charts, forecasts, or comparing different time periods). Never hedge with phrases such as "depending on the dataset selected"; the list is fixed.
+- If the user asks for something that is not listed, say plainly that Earth Scope does not offer it, then suggest the closest thing it does offer.
+- Name the actual page to use (Explore, Regional, Compare, Jobs, Learn), keep it short, and end with one concrete way to start. Describe actions in plain words ("run the analysis"); never quote button or menu labels, which you cannot see.
 
 When a user asks you to summarize the current page:
 - Use a short heading.
@@ -95,8 +104,45 @@ CONTEXT_CHANGED_NOTE = (
 )
 
 
-def build_system_instruction(context: dict[str, Any] | None) -> str:
-    """System instruction + the current page's server-built context."""
+def product_facts(settings: Settings | None = None) -> str:
+    """What Earth Scope actually offers, generated from the variable catalogue and the live settings.
+
+    Built from code rather than written by hand so the assistant can never describe a variable,
+    limit or feature the application does not have (and stays correct when the catalogue changes).
+    """
+    s = settings or get_settings()
+    variables = "\n".join(
+        f"  - {v.name} ({v.parameter}, {v.unit_display}): {v.description}"
+        + (" Land only: not available over oceans, large lakes or ice sheets." if v.land_only else "")
+        for v in VARIABLES
+    )
+    return f"""\
+## Earth Scope product facts (complete list — nothing else exists)
+
+Data source: NASA POWER monthly data (values from the MERRA-2 reanalysis — model-derived, not weather-station readings), available from {s.data_min_year} to the latest published year, for any latitude and longitude. Real NASA data is the default; an optional, clearly labelled Demo mode uses synthetic numbers.
+
+Variables — exactly {len(VARIABLES)}, no others:
+{variables}
+
+Ways to analyze (one variable at a time):
+  - Point analysis (Explore page): one location chosen by place search, map click or coordinates. Results describe the single NASA grid cell (about 0.5° × 0.625°) containing the point.
+  - Rectangle (Regional page): an area-weighted trend for a box {s.regional_min_span_deg:g}°–{s.regional_max_span_deg:g}° per side.
+  - Country (Regional page): an area-weighted trend inside a country boundary (geoBoundaries, with Natural Earth as fallback).
+  - Custom polygon (Regional page): draw a polygon on the map or upload a GeoJSON file.
+  - Spatial Trend Explorer (on rectangle, country and polygon results): a separate trend test for every grid cell, shown as maps of trend magnitude, direction, statistical significance and data availability, with a grid-cell inspector.
+  - Compare (Compare page): {s.max_compare_locations} locations at most (minimum 2), same variable and same period, side by side. It compares places, not time periods.
+  - Background analysis (Jobs page): countries or polygons too large for an instant result run on a server and can be checked later; results are identical to the instant analysis.
+
+Period: the user picks a start and end year; at least {s.min_year_span} years. Monthly values are averaged into day-weighted annual means; a year counts only with at least {s.min_valid_months_per_year} valid months.
+
+Statistics (on annual means, significance threshold α = {s.significance_alpha:g}): ordinary least-squares linear regression (slope per year and per decade, 95% confidence interval, R², p-value); Mann-Kendall trend test with Sen's slope and its confidence interval; autocorrelation diagnostics; autocorrelation-aware checks (Hamed–Rao and Yue–Wang modified Mann-Kendall, Newey–West/HAC regression). Spatial maps correct for testing many cells with Benjamini–Hochberg or Benjamini–Yekutieli false discovery rate.
+
+Outputs: an interactive time-series chart (annual or monthly values, with the regression trend line; for areas, a band showing variation across cells), maps, a plain-language interpretation with its limitations, the underlying data table, data-source provenance, and CSV/JSON downloads. The Learn page explains the concepts.
+"""
+
+
+def build_system_instruction(context: dict[str, Any] | None, settings: Settings | None = None) -> str:
+    """System instruction + product facts + the current page's server-built context."""
     if context is None:
         block = '{"page_type": "unknown", "has_results": false}'
     else:
@@ -105,6 +151,6 @@ def build_system_instruction(context: dict[str, Any] | None) -> str:
     # so strip the sequence explicitly; string fields are also sanitised in ai_context).
     block = block.replace("</earth_scope_context", "<\\/earth_scope_context")
     return (
-        f"{SYSTEM_INSTRUCTION}\n\n## Current page context\n{CONTEXT_CHANGED_NOTE}\n"
+        f"{SYSTEM_INSTRUCTION}\n\n{product_facts(settings)}\n## Current page context\n{CONTEXT_CHANGED_NOTE}\n"
         f"<earth_scope_context>\n{block}\n</earth_scope_context>"
     )

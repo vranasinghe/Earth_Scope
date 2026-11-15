@@ -577,3 +577,32 @@ def test_context_size_is_bounded():
     assert len(json.dumps(out)) <= 1000 and out["statistics"] == {"a": 1}
     assert aic.r4(0.123456789) == 0.1235 and aic.r4(float("nan")) is None
     assert aic.clean_text("a\x00b<i>c`d   e", 80) == "a b i c d e"
+
+
+# --------------------------------------------------------------------------- #
+# Product facts: the assistant only describes what Earth Scope really offers
+# --------------------------------------------------------------------------- #
+
+def test_product_facts_list_exactly_the_catalogue_and_live_limits():
+    from app.ai.system_prompt import product_facts
+    from app.core.catalog import VARIABLES
+
+    s = settings_with(max_compare_locations=3, regional_max_span_deg=9.0, min_year_span=10)
+    facts = product_facts(s)
+    assert f"exactly {len(VARIABLES)}, no others" in facts
+    for v in VARIABLES:
+        assert f"{v.name} ({v.parameter}" in facts
+    assert "3 locations at most" in facts and "2°–9° per side" in facts and "at least 10 years" in facts
+    assert "places, not time periods" in facts
+    for invented in ("Precipitation", "Solar", "Wind", "anomaly chart", "forecast"):
+        assert invented.lower() not in facts.lower(), invented
+
+
+def test_capability_questions_are_grounded_in_the_product_facts(fake):
+    c = api(settings_with())
+    assert ask(c, "What can I analyze with Earth Scope?", page_type="home", reference=None).status_code == 200
+    system = system_text(fake.calls[0])
+    assert "Earth Scope product facts" in system and "Answer ONLY from" in system
+    # facts sit before the page context, and the context block is still parseable
+    assert system.index("Earth Scope product facts") < system.index("<earth_scope_context>")
+    assert context_of(fake.calls[0])["page_type"] == "home"
