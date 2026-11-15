@@ -6,6 +6,7 @@ uses them in place of live NASA data.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,8 @@ from typing import Any
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# Tests drive jobs explicitly; never start the in-process runner / reconciler threads.
+os.environ.setdefault("EARTHSCOPE_JOB_INLINE_FALLBACK", "false")
 
 from app.core.catalog import get_variable  # noqa: E402
 from app.core.config import Settings  # noqa: E402

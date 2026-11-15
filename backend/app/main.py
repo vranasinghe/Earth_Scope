@@ -36,6 +36,15 @@ async def lifespan(_: FastAPI):
         ensure_schema()
     except Exception:  # noqa: BLE001 - the synchronous analyses must keep working without the job database
         logger.exception("Job database unavailable at startup; background jobs are disabled until it recovers")
+    try:
+        from app.jobs.queue import inline_mode
+
+        if inline_mode():   # no Redis / workers (e.g. a single free-tier instance): recover jobs in-process
+            from app.jobs.inline import start_reconciler
+
+            start_reconciler()
+    except Exception:  # noqa: BLE001
+        logger.exception("Could not start the in-process job reconciler")
     yield
 
 

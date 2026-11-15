@@ -106,6 +106,7 @@ class Settings(BaseSettings):
     job_tile_cache_retention_days: int = 30
     job_cell_chunk_size: int = 500          # cells per statistics checkpoint
     job_min_free_disk_mb: int = 200
+    job_inline_fallback: bool = True        # no Redis reachable: run jobs on a thread in the API process
     job_worker_class: str = "auto"          # auto | fork | simple (simple = no fork, required on native Windows)
     # Resource tiers (measured on this machine — README "Large-country resource budgets").
     # SMALL = inside the synchronous polygon_* limits above.

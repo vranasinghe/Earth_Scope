@@ -167,7 +167,7 @@ function CompareSetup({ catalogue }: { catalogue: VariablesResponse }) {
         </Row>
       </div>
 
-      <div className="sticky bottom-0 z-[1000] -mx-4 mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-line bg-page/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+      <div className="sticky bottom-0 z-[1000] -mx-4 mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-line bg-page/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 pr-20 sm:pr-24">
         <p className="text-[0.9375rem] text-fg-muted">
           <span className="stat-num font-semibold text-fg">{locations.length}</span> of {MAX_LOCATIONS} places
           {locations.length < 2 ? ` · add ${2 - locations.length} more to compare` : ' · places are fetched in parallel from NASA POWER'}

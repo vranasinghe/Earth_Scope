@@ -19,7 +19,10 @@ import type { SpatialCellDetail, SpatialCellParams, SpatialParams, SpatialTrendR
 import type { AreaPreviewParams, AreaPreviewResponse, AreaRef, CountryListResponse } from '../types/area'
 import type { Job, JobPreflightResponse, JobProgress, JobRequestParams, JobSubmitResponse, RetryResponse } from '../types/jobs'
 
-const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+// Same-origin "/api" by default: the Vite dev server and Vercel (frontend/vercel.json) proxy it to the
+// backend, which keeps the job-session cookie first-party. Browsers drop cookies on cross-site calls
+// (e.g. *.vercel.app -> *.onrender.com), so set VITE_API_ORIGIN only for a backend on the same site.
+const BASE = (import.meta.env.VITE_API_ORIGIN as string | undefined)?.replace(/\/$/, '') ?? ''
 
 export class ApiError extends Error {
   readonly status: number

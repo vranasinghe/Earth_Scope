@@ -8,6 +8,7 @@ const PANEL_ID = 'es-ai-panel'
 /**
  * Floating "Ask me" launcher + chat panel, mounted once in the layout so it survives route
  * changes. Minimizing hides the panel but keeps the conversation; "End conversation" clears it.
+ * Only the round button takes clicks; the "Ask me" label lets clicks through to the page below.
  */
 export function AiChat() {
   const { open, toggle, setOpen } = useAiChat()
@@ -24,7 +25,7 @@ export function AiChat() {
     <>
       {open && <AiChatWindow id={PANEL_ID} onMinimize={() => setOpen(false)} />}
       <div
-        className={`fixed right-4 z-[1100] items-center gap-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6 ${
+        className={`pointer-events-none fixed right-4 z-[1100] items-center gap-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6 ${
           open ? 'hidden sm:flex' : 'flex'
         }`}
       >
@@ -44,7 +45,7 @@ export function AiChat() {
           aria-expanded={open}
           aria-controls={open ? PANEL_ID : undefined}
           aria-label={open ? 'Minimize Earth Scope AI' : 'Open Earth Scope AI assistant'}
-          className="grid size-12 place-items-center rounded-full bg-accent text-on-accent shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:hover:scale-100"
+          className="pointer-events-auto grid size-12 place-items-center rounded-full bg-accent text-on-accent shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:hover:scale-100"
         >
           {open ? <ChevronDown className="size-6" aria-hidden /> : <Bot className="size-6" aria-hidden />}
         </button>

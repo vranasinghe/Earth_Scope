@@ -33,11 +33,28 @@ def get_queue(connection: redis.Redis | None = None) -> Queue:
     return Queue(s.job_queue_name, connection=connection or get_redis(), default_timeout=s.job_rq_timeout_seconds)
 
 
+def redis_available() -> bool:
+    try:
+        return bool(get_redis().ping())
+    except Exception:  # noqa: BLE001 - connection refused, DNS, timeout, ...
+        return False
+
+
+def inline_mode() -> bool:
+    """True when jobs run in the API process because Redis is unreachable (see app.jobs.inline)."""
+    return get_settings().job_inline_fallback and not redis_available()
+
+
 class Enqueuer:
     """Callable that hands a job id to the queue; replaceable in tests."""
 
     def __call__(self, job_id: str) -> str:
         s = get_settings()
+        if inline_mode():
+            from app.jobs import inline
+
+            inline.start_reconciler()
+            return inline.runner.submit(job_id)
         rq_id = f"es-{job_id}-{uuid.uuid4().hex[:8]}"
         get_queue().enqueue(
             TASK_PATH, job_id, job_id=rq_id, job_timeout=s.job_rq_timeout_seconds,
@@ -62,6 +79,10 @@ def rq_job_state(rq_id: str | None, connection: redis.Redis | None = None) -> st
     """RQ status of a queued message (None = unknown / expired / Redis unavailable)."""
     if not rq_id:
         return None
+    if rq_id.startswith("inline-"):
+        from app.jobs.inline import runner
+
+        return runner.state(rq_id)
     try:
         from rq.job import Job
 
@@ -77,6 +98,8 @@ def queue_health(connection: redis.Redis | None = None) -> dict[str, Any]:
     try:
         conn.ping()
     except redis.RedisError as exc:
+        if get_settings().job_inline_fallback:   # jobs run in the API process instead
+            return {"redis": False, "error": type(exc).__name__, "workers": 1, "queued": None, "inline": True}
         return {"redis": False, "error": type(exc).__name__, "workers": 0, "queued": None}
     q = get_queue(conn)
     workers = Worker.all(queue=q)

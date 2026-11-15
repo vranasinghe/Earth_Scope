@@ -133,7 +133,7 @@ function ExploreForm({ catalogue }: { catalogue: VariablesResponse }) {
         />
       </Step>
 
-      <div className="sticky bottom-0 z-[1000] -mx-4 mt-10 border-t border-line bg-page/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+      <div className="sticky bottom-0 z-[1000] -mx-4 mt-10 border-t border-line bg-page/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 pr-20 sm:pr-24">
         {submitted && errors.length > 0 && (
           <ul className="mb-3 space-y-1 text-sm text-danger" role="alert">
             {errors.map((er) => (
